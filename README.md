@@ -3,19 +3,16 @@
 *A new FRM with focus on Higher Kinded Data*
 
 DataPrism is an SQL query construction library built to take full advantage of
-the power of higher kinded data. DataPrism builds on `perspective` and the
-tools it provides.
+the power of higher kinded data. DataPrism builds on [`perspective`](https://github.com/Katrix/perspective)
+and the tools it provides for programming with higher kinded data.
 
-DataPrism is more flexible than other SQL libraries made for Scala. Want to
-sometimes leave out a column? You can do that. Want to return a List from a query,
-sure thing.
+The power of higher kinded data makes DataPrism more flexible than other Scala SQL libraries.
+Want to sometimes leave out a column? You can do that. Want to return a List from a query?
+Sure thing.
 
-DataPrism also works with both Java's JDBC and skunk.
+DataPrism works with both Java's JDBC and Skunk.
 
-Add DataPrism to your project by adding these statements to your `build.sbt` file.
-
-DataPrism is currently early in development, but feel free to try it out and
-report bugs and errors.
+Add DataPrism to your project by adding these statements to your `build.sbt` file:
 
 ```scala
 // For JDBC
@@ -25,10 +22,12 @@ libraryDependencies += "net.katsstuff" %% "dataprism-jdbc" % "{{versions.datapri
 libraryDependencies += "net.katsstuff" %% "dataprism-skunk" % "{{versions.dataprism}}"
 ```
 
-Simple showcase of code
+*DataPrism is currently early in development, but feel free to try it out and
+report bugs and errors.*
+
+## Showcase
+See [the docs](https://dataprism.katsstuff.net/index.html) for a full explanation and walkthrough.
 ```scala
-
-
 case class HomeK[F[_]](
   owner: F[UUID],
   name: F[String],

@@ -4,10 +4,9 @@ title: Table definitions
 
 # {{page.title}}
 
-The first thing you need when using DataPrism is a description of the table you are querying. There
-are theoretically many ways to define a table definition, but in 99% of cases, you're probably going
-to use some Higher Kinded Data (HKD) structure. HKD is a normal `case class` where the type of each
-field is wrapped in a higher kinded type.
+The first thing you need when using DataPrism is a description of the table you are querying.
+You can express this as a Higher Kinded Data (HKD) structure. HKD is a normal `case class`
+where the type of each field is wrapped in a higher kinded type.
 
 Here's an example of some HKD.
 
@@ -20,8 +19,7 @@ case class UserK[F[_]](
 )
 ```
 
-You also need `perspective.ApplyKC` and `perspective.TraverseKC` instances for the HKD. Eventually you'll just
-be able to use a derive clause for this, but for now you have to call a macro manually.
+You also need [`perspective.ApplyKC`](TODO: link) and [`perspective.TraverseKC`](TODO: link) instances for the HKD. (Eventually you'll just be able to use a derive clause for this, but for now you have to call a macro manually.)
 
 ```scala sc-name:UserInstance.scala sc-compile-with:User.scala
 import dataprism.KMacros
@@ -29,12 +27,12 @@ import dataprism.KMacros
 given KMacros.ApplyTraverseKC[UserK] = ??? // KMacros.deriveApplyTraverseKC[UserK]
 ```
 
-Lastly you need the table definition itself. We need an instance of `Table[Codec, User]`. `Codec` here represents how
+Lastly you need the table definition itself. We need an instance of `Table[Codec, UserK]` where `Codec` represents how
 data is read from and written to the database. The codec you use depends on how you connect to the database. Currently,
-there are two options: JDBC and skunk. Depending on your choice, you'll use different database codecs. Unless specified
+there are two options: JDBC and Skunk. Depending on your choice, you'll use different database codecs. Unless specified
 otherwise, in these docs I will assume JDBC is being used.
 
-`Table` itself takes two parameters. The name of the table, and a value of type `User[Column]`. `Column` meanwhile takes
+`Table` itself takes two parameters. The name of the table, and a value of type `UserK[Column]`. `Column` meanwhile takes
 two parameters, the name and the type of the column. The types can be gotten from an object that corresponds to the
 database you're using in `dataprism.jdbc.sql.<db choice>JdbcTypes`. For these examples I will assume Postgres is being
 used.
@@ -57,8 +55,8 @@ val table: Table[JdbcCodec, UserK] = Table(
 )
 ```
 
-Notice that all types have to be written out by hand. This is by design, and a similar approach is taken elsewhere it
-DataPrism. Types are never inferred. You have to specify them.
+Notice that all database types have to be written out by hand. This is by design, and a similar approach is taken elsewhere in
+DataPrism. These types are never inferred. You have to specify them.
 
 Putting it all together, our table definition could look like this.
 ```scala

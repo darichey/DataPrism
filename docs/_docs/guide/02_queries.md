@@ -35,8 +35,7 @@ object UserK:
 ```
 
 For basically anything that manipulates database values, we need a `QueryPlatform`. Once again, you should select a
-platform based on the database you are using. The platform must also be made for the codec type you're using. For these
-examples I will be using the `PostgresJdbcPlatform`.
+platform based on the database and codec type you are using. For these examples I will be using the `PostgresJdbcPlatform`.
 
 ## Query.from, map, filter, limit, offset
 
@@ -65,32 +64,28 @@ val q5: Query[[F[_]] =>> (F[String], F[String])] = q.map(
 val q6: Query[UserK] = q.drop(2).limit(5).offset(3)
 ``` 
 
-As can be seen here, within queries, all values above are wrapped in `DbValue`. This type is however not seen in
-the `Query`
-type. It instead opperates on just unspecified HKD. However, not all values in queries are always just plain `DbValue`.
+Within these queries, values are wrapped in `DbValue`. Note that this type is not present in the actual `Query` type
+which only knows about the abstract HKD.
 
 ## Joins
 
-The first example of a not quite `DbValue` type comes from joins. While normal joins require all values to be present,
-other join types might make some values nullable. This is represented by the `Nullable` type. `Nullable` keeps any
-type `Option[A]` the same, while wrapping non `Option` types in `Option`. Here's an example of how it can map a type.
-Take note of how `Nullable` keeps the type of `name` the same.
+Not all queries operate on plain `DbValue`. For example, while normal joins require all values to be present,
+other join types might make some values nullable. This is represented by the `Nullable` type.
 
 ```scala 3
 type Nullable[A] <: Option[_] = A match {
   case Option[b] => Option[b]
   case _ => Option[A]
 }
-type Id[A] = A
+```
 
-// A normal user. That is to say UserK[Id] 
-case class NormalUser(
-  id: Int,
-  name: Option[String],
-  username: String,
-  email: String
-)
+`Nullable` wraps a type in `Option` unless it is already. For example,
+* `Nullable[Int]` is `Option[Int]`
+* `Nullable[Option[Int]]` is `Option[Int]`
 
+We can use this with our `UserK` HKD to make every field `Optional` (take note of how `Nullable` keeps the type of `name` the same).
+
+```scala 3
 // A nullable user. That is to say UserK[Nullable] 
 case class NullableUser(
   id: Option[Int],
@@ -100,7 +95,7 @@ case class NullableUser(
 )
 ```
 
-With that, we can take a look at joins, and the types they leave the query.
+With that, we can take a look at the `Query` types for joins.
 
 ```scala 3 sc-compile-with:User.scala
 import perspective.Compose2
@@ -126,9 +121,7 @@ As can also be seen in this example, you can join on a query, or directly on a t
 
 The last query function we'll look at is `groupMap`. DataPrism does not expose a traditional `groupBy` function, as
 a `groupMap` function maps better to DataPrism's style. `groupMap` takes two functions as arguments. The first one
-indicates what you want to group by. The second function does the aggregation. Where it gets interesting is that the
-result of the first function is passed into the second. The second parameter of the second function is the values of the
-query, but instead of types as `DbValue`, they are types as `Many`. Here are two examples.
+extracts the value to group by. The second one performs the aggregation given both that extracted value and the values of the query which are wrapped in `Many`. Here are some examples.
 
 ```scala 3 sc-compile-with:User.scala
 import dataprism.jdbc.platform.implementations.PostgresJdbcPlatform.*
@@ -138,28 +131,35 @@ import dataprism.jdbc.sql.PostgresJdbcTypes.ArrayMapping.given_ArrayMapping_A
 
 val q: Query[UserK] = Query.from(UserK.table)
 
-val q1: Query[[F[_]] =>> (F[String], F[Seq[String]])] =
+val q1: Query[[F[_]] =>> (F[Option[String]], F[Long])] =
+  q.groupMap((v: UserK[DbValue]) => v.name)(
+    (name: DbValue[Option[String]], v: UserK[Many]) => (name, v.name.count)
+  )
+
+val q2: Query[[F[_]] =>> (F[String], F[Seq[String]])] =
   q.groupMap((v: UserK[DbValue]) => v.email)(
     (email: DbValue[String], v: UserK[Many]) => (email, v.username.arrayAgg)
   )
 
-val q2: Query[[F[_]] =>> (F[Option[String]], F[String], F[Seq[String]])] =
+val q3: Query[[F[_]] =>> (F[Option[String]], F[String], F[Seq[String]])] =
   q.groupMap((v: UserK[DbValue]) => (v.name, v.username))(
     (t: (DbValue[Option[String]], DbValue[String]), v: UserK[Many]) => 
       (t._1, t._2, v.email.arrayAgg)
   )
 ```
 
-Note how you can put a tuple for example in the grouping function. Anything that works for map works here too.
+Note how you don't have to directly return a column from the grouping function. For example, we return a tuple in `q3`.
+Anything that works for `map` works here too (see [Mapping to other Higher Kinded Data](#mapping-to-other-higher-kinded-data)).
 
 ## flatMap
 
-Up until so far, we've mostly seen direct function application on the queries. That is the simplest way, but flatMap
+So far, we've mostly seen direct function application on the queries. That is the simplest way, but `flatMap`
 does also exist, and because of it, for comprehensions.
 
 ```scala 3 sc-compile-with:User.scala
 import dataprism.jdbc.platform.implementations.PostgresJdbcPlatform.*
 
+// why commented?
 //val q1: Query[[F[_]] =>> (UserK[F], UserK[F])] =
 //  Query.from(UserK.table).flatMap(u1 => Query.from(UserK.table).map(u2 => (u1, u2)))
 
@@ -170,9 +170,11 @@ val q2: Query[UserK] = for
 yield u2
 ```
 
+<!-- what is the upshot of this? -->
+
 ## Mapping to other Higher Kinded Data
 
-Lastly, let's talk a bit about what types you can use in the result of map and similar. So far we've seen tuples, and
+Lastly, let's talk a bit about what types you can use in the result of `map` and similar. So far we've seen tuples, and
 the HKD we defined our table in. The HKD we used to define our table is not special. Any HKD (or not even HKD)
 with `perspective.ApplyKC` and `perspective.TraverseKC` instances can be used as a result type in a map and similar.
 Here's one example.

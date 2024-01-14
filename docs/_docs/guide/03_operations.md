@@ -4,9 +4,7 @@ title: Operations (SELECT, INSERT, UPDATE, DELETE)
 
 # {{page.title}}
 
-Now that we have our queries, it is time to run them. For this we'll need an instance of `Db[F, Codec]`. For our usecase
-we'll use `DataSourceDb`. Operations have a few different functions, but only one is interesting for the average
-user, `run`.
+Now that we have our queries, it is time to run them. Running queries requires an instance of `Db[F, Codec]`. For these examples, we'll use `DataSourceDb`.
 
 ```scala 3 sc-name:Setup.scala
 import dataprism.KMacros
@@ -59,9 +57,9 @@ Next up is insert. There are a few ways to do this depending on what you want to
 outside or inside the database. Do you want to insert into all the columns of the table, or leave some for the database
 to handle?
 
-The simples way is just `Insert.values`. For this function you pass in the table to insert, and values to insert. The
-next option is `Insert.into(table).values(query)`. `Insert.values` is a convenience function that
-calls `Insert.into(table).values(Query.valuesOf(table, firstValues, remainingValues*))`
+<!-- This isn't docs feedback, but from a first impression, I might consider removes `Insert.values`. It only saves you 5 characters! -->
+
+The most simple way is just `Insert.values`. For this function, you pass in the table to insert, and values to insert(note that this is a convenience function which calls calls `Insert.into(table).values(Query.valuesOf(table, firstValues, remainingValues*))`).
 
 ```scala 3 sc-compile-with:Setup.scala
 import dataprism.jdbc.platform.implementations.PostgresJdbcPlatform.*
@@ -75,7 +73,7 @@ Insert.into(UserK.table).values(
 
 Sometimes you only want to insert values into some columns. To do this, use `valuesWithoutSomeColumns(query)`. The query
 for this can be created using `Query.valueOfOpt`. The arguments for `valueOfOpt` would in this case be the table
-definition, and `User[Option]`. You can also construct a query to pass to `valuesWithoutSomeColumns` with just a normal
+definition, and `UserK[Option]`. You can also construct a query to pass to `valuesWithoutSomeColumns` with just a normal
 query and wrapping the desired columns in `Some`
 
 ```scala 3 sc-compile-with:Setup.scala
